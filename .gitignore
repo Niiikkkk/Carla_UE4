@@ -1,6 +1,7 @@
 # Output directories
 output/
 output_anomaly/
+output_normal/
 
 # JSON files
 *.json

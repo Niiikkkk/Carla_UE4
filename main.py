@@ -595,6 +595,73 @@ def build_arg_anomalies(list,size):
         anomalies.append([name,size])
     return anomalies
 
+def divide_single_pool(anomaly_list, train_prob=0.5, val_prob=0.15, test_prob=0.35):
+    """
+    Divide a single anomaly pool into Train, Val, and Test sets.
+
+    Args:
+        anomaly_list: List of anomaly names
+        train_prob: Probability for train set (default 0.5)
+        val_prob: Probability for val set (default 0.15)
+        test_prob: Probability for test set (default 0.35)
+
+    Returns:
+        Tuple of (train_list, val_list, test_list)
+    """
+    # Shuffle to randomize the split
+    shuffled = anomaly_list.copy()
+    random.shuffle(shuffled)
+
+    # Calculate split indices
+    total = len(shuffled)
+    train_idx = int(total * train_prob)
+    val_idx = train_idx + int(total * val_prob)
+
+    # Split anomalies
+    train_split = shuffled[:train_idx]
+    val_split = shuffled[train_idx:val_idx]
+    test_split = shuffled[val_idx:]
+
+    return train_split, val_split, test_split
+
+def divide_anomalies_into_splits(tiny_list, small_list, medium_list, large_list, train_prob=0.5, val_prob=0.15, test_prob=0.35):
+    """
+    Divide each anomaly pool separately into Train, Val, and Test sets.
+
+    Args:
+        tiny_list, small_list, medium_list, large_list: Lists of anomalies
+        train_prob: Probability for train set (default 0.5)
+        val_prob: Probability for val set (default 0.15)
+        test_prob: Probability for test set (default 0.35)
+
+    Returns:
+        Dictionary with keys like 'Tiny_Train', 'Tiny_Val', 'Tiny_Test', etc.
+        Each value is a list of [name, size] pairs
+    """
+    # Divide each pool separately
+    tiny_train, tiny_val, tiny_test = divide_single_pool(tiny_list, train_prob, val_prob, test_prob)
+    small_train, small_val, small_test = divide_single_pool(small_list, train_prob, val_prob, test_prob)
+    medium_train, medium_val, medium_test = divide_single_pool(medium_list, train_prob, val_prob, test_prob)
+    large_train, large_val, large_test = divide_single_pool(large_list, train_prob, val_prob, test_prob)
+
+    # Build result dictionary with [name, size] format
+    pools = {
+        'Tiny_Train': [[name, 'tiny'] for name in tiny_train],
+        'Tiny_Val': [[name, 'tiny'] for name in tiny_val],
+        'Tiny_Test': [[name, 'tiny'] for name in tiny_test],
+        'Small_Train': [[name, 'small'] for name in small_train],
+        'Small_Val': [[name, 'small'] for name in small_val],
+        'Small_Test': [[name, 'small'] for name in small_test],
+        'Medium_Train': [[name, 'medium'] for name in medium_train],
+        'Medium_Val': [[name, 'medium'] for name in medium_val],
+        'Medium_Test': [[name, 'medium'] for name in medium_test],
+        'Large_Train': [[name, 'large'] for name in large_train],
+        'Large_Val': [[name, 'large'] for name in large_val],
+        'Large_Test': [[name, 'large'] for name in large_test],
+    }
+
+    return pools
+
 def benchmark():
     parser = argparse.ArgumentParser(description='CARLA Simulator')
     parser.add_argument("--seed", type=int, help="Random seed", default=42)
@@ -627,23 +694,6 @@ def benchmark():
     parser.add_argument("--anomalies", nargs="+", type=str, help="List of anomalies to spawn", default=None)
     parser.add_argument("--spawn_points", nargs="+", type=carla.Transform, help="List of spawn_points for ego vehicle", default=None)
     args = parser.parse_args()
-
-    list_static_anomalies = [
-        "baseballbat", "basketball", "beerbottle", "football", "ladder", "mattress", "skateboard", "tire", "woodpalette",
-        "roadsigntwisted", "roadsignvandalized",
-        "garbagebag", "brokenchair", "hubcap",
-        "newspaper", "box", "plasticbottle", "winebottle", "metalbottle", "table", "officechair", "oldstove", "shoppingcart",
-        "bag", "helmet", "hat", "trafficcone", "fallenstreetlight", "book", "stroller", "fuelcan", "constructionbarrier",
-
-        # TO TEST sem seg
-        "suitcase", "carmirror", "umbrella", "tierscooter", "brick", "cardoor", "rock", "hoodcar", "trunkcar", "kidtoy", "mannequin", "tablet",
-        "laptop", "smartphone", "television", "scooter",
-        "washingmachine", "fridge", "pilesand", "shovel", "rake", "deliverybox", "fallentree", "oven",
-        "wheelchair", "hammer", "wrench", "shoe", "glove",
-        "drill", "saw", "sunglasses", "bikes", "flippedcar",
-        "wallet", "coffecup", "fence", "pizzabox", "toycar", "remotecontrol", "cd", "powerbank", "deodorant", "lighter",
-        "bowl", "bucket", "speaker", "guitar", "pillow", "fan", "trolley", "dumbell"
-    ]
 
     list_tiny_anomalies = [
         "beerbottle", "cd", "coffecup", "deodorant", "dumbell", "lighter", "plasticbottle",
@@ -679,15 +729,12 @@ def benchmark():
         "scooter", "shoppingcart", "table", "tierscooter", "ladder2",
         "container", "roadblock", "roadblock2",
         #DYN
-        "dangerdriver", "crash", "streetlight", "trafficlightoff",
-        "billboard", "instantcarbreak", "carthroughredlight"
+        #Those here are not anomalous objects, but anomalous events. Exclude them.
+        #"dangerdriver", "crash", "streetlight", "trafficlightoff",
+        #"billboard", "instantcarbreak", "carthroughredlight"
     ]
 
-    list_dynamic_anomalies = [
-        "labrador", "person", "bird", "dangerdriver", "crash", "drone", "instantcarbreak", "carthroughred",
-        "tree", "bouncingbasketball", "bouncingfootball", "streetlight", "trashcan", "trafficlight", "trafficlightoff",
-        "garbagebagwind", "newspaperwind", "billboard"
-    ]
+
 
     print("Total Anomalies: ", len(list_tiny_anomalies) + len(list_small_anomalies) + len(list_medium_anomalies) + len(list_large_anomalies))
 
@@ -701,7 +748,7 @@ def benchmark():
 
     number_of_runs = 1
 
-    seed = 100
+    seed = 1
 
     args.log = True
     # NOTE: fps and sensor_tick are linked. If I have 20 fps, then the tick will be every 1/20 = 0.05 seconds. So the sensor tick should be >= 0.05.
@@ -711,49 +758,87 @@ def benchmark():
     args.hybrid = True
     args.run_time = 10  # seconds
 
+    # Divide all anomaly pools into Train/Val/Test splits
+    anomaly_pools = divide_anomalies_into_splits(
+        list_tiny_anomalies, list_small_anomalies, list_medium_anomalies, list_large_anomalies,
+        train_prob=0.33, val_prob=0.23, test_prob=0.44
+    )
 
-    for run in range(number_of_runs):
-        random.seed(seed+run)
-        args.seed = seed+run
+    # Print pool statistics
+    print("\n=== Anomaly Pool Division ===")
+    for pool_name, anomalies in anomaly_pools.items():
+        print(f"{pool_name}: {len(anomalies)} anomalies")
+    print("=" * 30 + "\n")
 
-        number_of_tiny_anomalies = random.randint(1, 4)
-        tiny_anomalies = random.sample(list_tiny_anomalies, number_of_tiny_anomalies)
-        tiny = build_arg_anomalies(tiny_anomalies,"tiny")
+    # Extract Train, Val, and Test pools
+    train_pools = {k: v for k, v in anomaly_pools.items() if 'Train' in k}
+    val_pools = {k: v for k, v in anomaly_pools.items() if 'Val' in k}
+    test_pools = {k: v for k, v in anomaly_pools.items() if 'Test' in k}
 
-        number_of_small_anomalies = random.randint(1, 4)
-        small_anomalies = random.sample(list_small_anomalies, number_of_small_anomalies)
-        small = build_arg_anomalies(small_anomalies,"small")
+    # Divide number_of_runs equally across the 3 splits
+    train_runs = int(number_of_runs * 0.5)
+    val_runs = int(number_of_runs * 0.15)
+    test_runs = int(number_of_runs * 0.35)
 
-        number_of_medium_anomalies = random.randint(0, 3)
-        medium_anomalies = random.sample(list_medium_anomalies, number_of_medium_anomalies)
-        medium = build_arg_anomalies(medium_anomalies,"medium")
+    print(f"Total runs to distribute: {number_of_runs}")
+    print(f"Train runs: {train_runs}, Val runs: {val_runs}, Test runs: {test_runs}\n")
 
-        number_of_large_anomalies = random.randint(0, 3)
-        large_anomalies = random.sample(list_large_anomalies, number_of_large_anomalies)
-        large = build_arg_anomalies(large_anomalies,"large")
+    run_experiments(args, number_of_runs, seed, train_pools, 1)
+    #run_experiments(args, number_of_runs, seed, val_pools, val_runs)
+    #run_experiments(args, number_of_runs, seed, test_pools, test_runs)
 
+
+def run_experiments(args, number_of_runs: int, seed: int,
+                    train_pools, train_runs: int):
+    for run in range(train_runs):
+        random.seed(seed + run)
+        args.seed = seed + run
+
+        tiny, small, medium, large = pick_anomalies(train_pools)
 
         args.anomalies = tiny + small + medium + large
-        #args.anomalies = build_arg_anomalies([""],"tiny")
+        # args.anomalies = build_arg_anomalies([""],"tiny")
         args.anomalies = []
 
-        #randomly select number of vehicles
+        # Randomly select number of vehicles
         args.number_of_vehicles = random.randint(40, 60)
-        #args.number_of_vehicles = 0
+        # args.number_of_vehicles = 0
 
-        #randomly select number of pedestrians
+        # Randomly select number of pedestrians
         args.number_of_pedestrians = random.randint(80, 100)
-        #args.number_of_pedestrians = 0
-        #args.spawn_points = [carla.Transform(carla.Location(x=-103.21614258, y=-2.20839218, z=0.6), carla.Rotation(pitch=0.000000, yaw=-90, roll=0.000000))]
-        #args.spawn_points = [carla.Transform(carla.Location(x=99.07856445, y=42.14180176, z=0.6), carla.Rotation(pitch=0.000000, yaw=90, roll=0.000000))]
+        # args.number_of_pedestrians = 0
+        # args.spawn_points = [carla.Transform(carla.Location(x=-103.21614258, y=-2.20839218, z=0.6), carla.Rotation(pitch=0.000000, yaw=-90, roll=0.000000))]
+        # args.spawn_points = [carla.Transform(carla.Location(x=99.07856445, y=42.14180176, z=0.6), carla.Rotation(pitch=0.000000, yaw=90, roll=0.000000))]
 
-        print(f"Running run {run+1} / {number_of_runs} with the following parameters:")
+        print(f"Running run {run + 1} / {number_of_runs} with the following parameters:")
         print(args)
 
         start_time = time.time()
-        main(args,run)
+        main(args, run)
         end_time = time.time()
         print(f"Execution Time: {end_time - start_time} seconds\n\n\n")
+
+
+def pick_anomalies(pool, split="Train"):
+    number_of_tiny_anomalies = random.randint(1, 3)
+    tiny_anomalies = random.sample(pool['Tiny_'+split], number_of_tiny_anomalies)
+    #tiny = build_arg_anomalies(tiny_anomalies, "tiny")
+
+    number_of_small_anomalies = random.randint(1, 3)
+    small_anomalies = random.sample(pool['Small_'+split], number_of_small_anomalies)
+    #small = build_arg_anomalies(small_anomalies, "small")
+
+    number_of_medium_anomalies = random.randint(0, 3)
+    medium_anomalies = random.sample(pool['Medium_'+split], number_of_medium_anomalies)
+    #medium = build_arg_anomalies(medium_anomalies, "medium")
+
+    number_of_large_anomalies = random.randint(0, 3)
+    large_anomalies = random.sample(pool['Large_'+split], number_of_large_anomalies)
+    #large = build_arg_anomalies(large_anomalies, "large")
+
+    print(tiny_anomalies, small_anomalies, medium_anomalies, large_anomalies)
+
+    return tiny_anomalies,small_anomalies,medium_anomalies,large_anomalies
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='CARLA Simulator')
