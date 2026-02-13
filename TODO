@@ -1,0 +1,6 @@
+- Train  X
+- FT with coco
+- FT with custom anomaly BUT NOT THE SAME AS TEST, paste on normal dataset objects THAT ARE NOT in the ano dataset
+- Validation code (modification to code, label should be ano / not ano)
+- event camera 1 for rain
+- try rain niagara, vedere raggio d-azione. Bujild a blueprint based on niagara, and attach it to ego_vechile in python
