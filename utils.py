@@ -438,7 +438,7 @@ def attach_depth_camera(args, world,client,ego_vehicle):
     sensor = world.spawn_actor(depth_bp, pos, attach_to=ego_vehicle)
     return sensor
 
-def save_lidar(lidar_measurements,anomaly_name,run):
+def save_lidar(lidar_measurements,anomaly_name,run, split):
     """Save the LIDAR measurements.
     Args:
         lidar_measurements (carla.LidarMeasurement): The LIDAR measurements object.
@@ -468,17 +468,17 @@ def save_lidar(lidar_measurements,anomaly_name,run):
     # crete the direcotry if it does not exist
     # if not os.path.exists("output/"+str(run)+"/lidar/"):
     #     os.makedirs("output/"+str(run)+"/lidar/")
-    if not os.path.exists("output/"+str(run)+"/lidar/raw/"):
-        os.makedirs("output/"+str(run)+"/lidar/raw/")
+    if not os.path.exists("output/"+str(split)+'/'+str(run)+"/lidar/raw/"):
+        os.makedirs("output/"+str(split)+'/'+str(run)+"/lidar/raw/")
     # if anomaly_name is not None:
     #     o3d.io.write_point_cloud(f"output/"+str(run)+"/lidar/"+"/"+anomaly_name+f"_lidar-{lidar_measurements.frame}.ply", pcd)
     # else:
     #     o3d.io.write_point_cloud(f"output/"+str(run)+"/lidar/"+"/normal_" + f"_lidar-{lidar_measurements.frame}.ply", pcd)
     tmp = np.frombuffer(lidar_measurements.raw_data, dtype=np.dtype('f4')).copy().reshape(-1,4)
     tmp[:,1] = -tmp[:,1]
-    np.save(f"output/"+str(run)+"/lidar/raw/"+"/"+f"lidar-{lidar_measurements.frame}.npy", tmp)
+    np.save(f"output/"+str(split)+'/'+str(run)+"/lidar/raw/"+"/"+f"lidar-{lidar_measurements.frame}.npy", tmp)
 
-def save_semantic_lidar(lidar_measurements,anomaly_name,run):
+def save_semantic_lidar(lidar_measurements,anomaly_name,run,split):
     """Save the Semantic LIDAR measurements.
     Args:
         lidar_measurements (carla.LidarMeasurement): The LIDAR measurements object.
@@ -546,8 +546,8 @@ def save_semantic_lidar(lidar_measurements,anomaly_name,run):
     # crete the direcotry if it does not exist
     # if not os.path.exists("output/"+str(run)+"/semantic_lidar/"):
     #     os.makedirs("output/"+str(run)+"/semantic_lidar/")
-    if not os.path.exists("output/"+str(run)+"/semantic_lidar/raw/"):
-        os.makedirs("output/"+str(run)+"/semantic_lidar/raw/")
+    if not os.path.exists("output/"+str(split)+'/'+str(run)+"/semantic_lidar/raw/"):
+        os.makedirs("output/"+str(split)+'/'+str(run)+"/semantic_lidar/raw/")
     # if anomaly_name is not None:
     #     o3d.io.write_point_cloud(f"output/"+str(run)+"/semantic_lidar/"+"/"+anomaly_name+f"_semantic_lidar-{lidar_measurements.frame}.ply", pcd)
     # else:
@@ -557,7 +557,7 @@ def save_semantic_lidar(lidar_measurements,anomaly_name,run):
         ('CosAngle', np.float32), ('ObjIdx', np.uint32), ('ObjTag', np.uint32)]))
     data = np.copy(data)
     data['y'] = -data['y']
-    np.save(f"output/"+str(run)+"/semantic_lidar/raw/"+"/"+f"semantic_lidar-{lidar_measurements.frame}.npy", data)
+    np.save(f"output/"+str(split)+'/'+str(run)+"/semantic_lidar/raw/"+"/"+f"semantic_lidar-{lidar_measurements.frame}.npy", data)
 
 def save_radar(radar_measurements,anomaly_name,run):
     """Save the radar measurements.

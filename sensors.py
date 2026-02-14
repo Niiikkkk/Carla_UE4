@@ -9,7 +9,7 @@ class Sensor:
         self.queue = queue
         self.sensor:carla.Sensor = sensor
 
-    def handle(self, data, anomaly):
+    def handle(self, data, anomaly, split):
         """
         Handle the sensor data. This method should be overridden by subclasses.
         :param sensor_tick:
@@ -52,7 +52,7 @@ class RGB_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None):
+    def handle(self, run, anomaly=None, split=None):
         """
         Handle the RGB sensor data.
         :param sensor_tick:
@@ -81,7 +81,7 @@ class Lidar_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None):
+    def handle(self, run, anomaly=None, split=None):
         """
         Handle the LiDAR sensor data.
         :param run: The current run number.
@@ -91,7 +91,7 @@ class Lidar_Sensor(Sensor):
         anomaly_name = self.get_anomaly_name_from_list(anomaly)
 #        if len(self.queue) != 0:
         lidar_data: carla.LidarMeasurement = self.queue.get(True,1)
-        save_lidar(lidar_data, anomaly_name, run)
+        save_lidar(lidar_data, anomaly_name, run, split)
 
 class Semantic_Sensor(Sensor):
     """
@@ -106,7 +106,7 @@ class Semantic_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None):
+    def handle(self, run, anomaly=None, split=None):
         """
         Handle the semantic sensor data.
         :param run: The current run number.
@@ -141,7 +141,7 @@ class Semantic_Lidar_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None):
+    def handle(self, run, anomaly=None, split=None):
         """
         Handle the semantic LiDAR sensor data.
         :param run: The current run number.
@@ -151,7 +151,7 @@ class Semantic_Lidar_Sensor(Sensor):
         anomaly_name = self.get_anomaly_name_from_list(anomaly)
         # if len(self.queue) != 0:
         lidar_semantic_data: carla.SemanticLidarMeasurement = self.queue.get(True,1)
-        save_semantic_lidar(lidar_semantic_data, anomaly_name, run)
+        save_semantic_lidar(lidar_semantic_data, anomaly_name, run,split)
 
 class Radar_Sensor(Sensor):
     """
@@ -166,7 +166,7 @@ class Radar_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None):
+    def handle(self, run, anomaly=None, split=None):
         """
         Handle the radar sensor data.
         :param run: The current run number.
@@ -191,7 +191,7 @@ class Depth_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None):
+    def handle(self, run, anomaly=None, split=None):
         """
         Handle the depth sensor data.
         :param run: The current run number.
@@ -230,7 +230,7 @@ class Instant_Segmentation_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None):
+    def handle(self, run, anomaly=None, split=None):
         """
         Handle the instance segmentation sensor data.
         :param run: The current run number.
@@ -259,7 +259,7 @@ class Collision_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, data, anomaly=None):
+    def handle(self, data, anomaly=None, split=None):
         """
         Handle the collision sensor data.
         :param data: The collision data to handle.

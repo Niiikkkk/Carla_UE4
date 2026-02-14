@@ -8,7 +8,7 @@ from anomalies import *
 import logging
 from logging import info,warning,error
 
-def main(args, bench_run=None):
+def main(args, bench_run=None, split=None):
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(levelname)s: %(message)s',
                         datefmt='%Y-%m-%d %H:%M:%S',
@@ -276,7 +276,7 @@ def main(args, bench_run=None):
                     anomaly_obj.handle_semantic_tag()
 
             # Handle the sensors data
-            handle_sensor_data(args, args.seed, sensors, spawned_anomaly_names)
+            handle_sensor_data(args, args.seed, sensors, spawned_anomaly_names, split)
             # info("Frame: " + str(world.get_snapshot().frame))
 
     except KeyboardInterrupt:
@@ -293,12 +293,12 @@ def main(args, bench_run=None):
         info("Total frames: " + str(total_frames))
         info("End of simulation")
 
-def handle_sensor_data(args, run, sensors,anomalies):
+def handle_sensor_data(args, run, sensors,anomalies, split):
     # if the queue is empty, skip one and go to the next tick(). This happens at the first tick() because
     # the data will be available only at the next tick()
     for sensor in sensors:
         try:
-            sensor.handle(run,anomalies)
+            sensor.handle(run,anomalies,split)
         except Empty as e:
             print("Some sensor queue is empty, skipping this tick")
 
@@ -746,7 +746,7 @@ def benchmark():
     #args.instance = True
     args.lidar_semantic = True
 
-    number_of_runs = 1
+    number_of_runs = 80
 
     seed = 1
 
@@ -758,10 +758,12 @@ def benchmark():
     args.hybrid = True
     args.run_time = 10  # seconds
 
+    random.seed(42)
+
     # Divide all anomaly pools into Train/Val/Test splits
     anomaly_pools = divide_anomalies_into_splits(
         list_tiny_anomalies, list_small_anomalies, list_medium_anomalies, list_large_anomalies,
-        train_prob=0.33, val_prob=0.23, test_prob=0.44
+        train_prob=0.50, val_prob=0.20, test_prob=0.30
     )
 
     # Print pool statistics
@@ -776,36 +778,40 @@ def benchmark():
     test_pools = {k: v for k, v in anomaly_pools.items() if 'Test' in k}
 
     # Divide number_of_runs equally across the 3 splits
-    train_runs = int(number_of_runs * 0.5)
-    val_runs = int(number_of_runs * 0.15)
-    test_runs = int(number_of_runs * 0.35)
+    train_runs = int(np.ceil(number_of_runs * 0.5))
+    val_runs = int(np.ceil(number_of_runs * 0.15))
+    test_runs = int(np.ceil(number_of_runs * 0.35))
 
     print(f"Total runs to distribute: {number_of_runs}")
     print(f"Train runs: {train_runs}, Val runs: {val_runs}, Test runs: {test_runs}\n")
 
-    run_experiments(args, number_of_runs, seed, train_pools, 1)
-    #run_experiments(args, number_of_runs, seed, val_pools, val_runs)
-    #run_experiments(args, number_of_runs, seed, test_pools, test_runs)
+    run_experiments(args, number_of_runs, seed, train_pools, train_runs, "Train")
+    print("")
+    run_experiments(args, number_of_runs, seed, val_pools, val_runs, "Val")
+    print("")
+    run_experiments(args, number_of_runs, seed, test_pools, test_runs, "Test")
 
 
 def run_experiments(args, number_of_runs: int, seed: int,
-                    train_pools, train_runs: int):
+                    train_pools, train_runs: int,split):
     for run in range(train_runs):
         random.seed(seed + run)
         args.seed = seed + run
 
-        tiny, small, medium, large = pick_anomalies(train_pools)
+        tiny, small, medium, large = pick_anomalies(train_pools,split)
 
         args.anomalies = tiny + small + medium + large
+        print(args.anomalies)
         # args.anomalies = build_arg_anomalies([""],"tiny")
-        args.anomalies = []
 
         # Randomly select number of vehicles
         args.number_of_vehicles = random.randint(40, 60)
+        print(args.number_of_vehicles)
         # args.number_of_vehicles = 0
 
         # Randomly select number of pedestrians
         args.number_of_pedestrians = random.randint(80, 100)
+        print(args.number_of_pedestrians)
         # args.number_of_pedestrians = 0
         # args.spawn_points = [carla.Transform(carla.Location(x=-103.21614258, y=-2.20839218, z=0.6), carla.Rotation(pitch=0.000000, yaw=-90, roll=0.000000))]
         # args.spawn_points = [carla.Transform(carla.Location(x=99.07856445, y=42.14180176, z=0.6), carla.Rotation(pitch=0.000000, yaw=90, roll=0.000000))]
@@ -814,29 +820,27 @@ def run_experiments(args, number_of_runs: int, seed: int,
         print(args)
 
         start_time = time.time()
-        main(args, run)
+        main(args, run, split)
         end_time = time.time()
         print(f"Execution Time: {end_time - start_time} seconds\n\n\n")
 
 
 def pick_anomalies(pool, split="Train"):
     number_of_tiny_anomalies = random.randint(1, 3)
-    tiny_anomalies = random.sample(pool['Tiny_'+split], number_of_tiny_anomalies)
+    tiny_anomalies = random.sample(pool['Tiny_'+split], min(number_of_tiny_anomalies, len(pool['Tiny_'+split])))
     #tiny = build_arg_anomalies(tiny_anomalies, "tiny")
 
     number_of_small_anomalies = random.randint(1, 3)
-    small_anomalies = random.sample(pool['Small_'+split], number_of_small_anomalies)
+    small_anomalies = random.sample(pool['Small_'+split], min(number_of_small_anomalies, len(pool['Small_'+split])))
     #small = build_arg_anomalies(small_anomalies, "small")
 
     number_of_medium_anomalies = random.randint(0, 3)
-    medium_anomalies = random.sample(pool['Medium_'+split], number_of_medium_anomalies)
+    medium_anomalies = random.sample(pool['Medium_'+split], min(number_of_medium_anomalies, len(pool['Medium_'+split])))
     #medium = build_arg_anomalies(medium_anomalies, "medium")
 
     number_of_large_anomalies = random.randint(0, 3)
-    large_anomalies = random.sample(pool['Large_'+split], number_of_large_anomalies)
+    large_anomalies = random.sample(pool['Large_'+split], min(number_of_large_anomalies, len(pool['Large_'+split])))
     #large = build_arg_anomalies(large_anomalies, "large")
-
-    print(tiny_anomalies, small_anomalies, medium_anomalies, large_anomalies)
 
     return tiny_anomalies,small_anomalies,medium_anomalies,large_anomalies
 
