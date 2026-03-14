@@ -310,9 +310,9 @@ def attach_lidar(args,world,client,ego_vehicle):
     lidar_bp.set_attribute("rotation_frequency", str(args.fps))
     # Number of lasers
     lidar_bp.set_attribute("channels", '64')
-    lidar_bp.set_attribute("upper_fov", '2')
+    lidar_bp.set_attribute("upper_fov", '4')
     lidar_bp.set_attribute("lower_fov", '-24.8')
-    lidar_bp.set_attribute("points_per_second", '2500000')
+    lidar_bp.set_attribute("points_per_second", '3500000')
     lidar_bp.set_attribute("sensor_tick", args.sensor_tick)
 
     # Camera has also another attribute called "sensor_tick" that is the time to capture frames. Since we are in sync mode with a fixed time = 0.05, each tick() of 0.05 will
@@ -365,8 +365,8 @@ def attach_semantic_lidar(args, world,client,ego_vehicle):
     semantic_lidar_bp.set_attribute("rotation_frequency", str(args.fps))
     # Number of lasers
     semantic_lidar_bp.set_attribute("channels", '64')
-    semantic_lidar_bp.set_attribute("upper_fov", '5')
-    semantic_lidar_bp.set_attribute("lower_fov", '-25')
+    semantic_lidar_bp.set_attribute("upper_fov", '4')
+    semantic_lidar_bp.set_attribute("lower_fov", '-24.8')
     semantic_lidar_bp.set_attribute("points_per_second", '3500000')
     semantic_lidar_bp.set_attribute("sensor_tick", args.sensor_tick)
     pos = carla.Transform()
@@ -438,10 +438,11 @@ def attach_depth_camera(args, world,client,ego_vehicle):
     sensor = world.spawn_actor(depth_bp, pos, attach_to=ego_vehicle)
     return sensor
 
-def save_lidar(lidar_measurements,anomaly_name,run, split):
+def save_lidar(lidar_measurements, anomaly_name, run, split, weather=None):
     """Save the LIDAR measurements.
     Args:
         lidar_measurements (carla.LidarMeasurement): The LIDAR measurements object.
+        weather (str): The weather label (e.g. 'Sunny', 'Rainy').
     """
     VIRIDIS = np.array(cm.get_cmap('plasma').colors)
     VID_RANGE = np.linspace(0.0, 1.0, VIRIDIS.shape[0])
@@ -468,20 +469,20 @@ def save_lidar(lidar_measurements,anomaly_name,run, split):
     # crete the direcotry if it does not exist
     # if not os.path.exists("output/"+str(run)+"/lidar/"):
     #     os.makedirs("output/"+str(run)+"/lidar/")
-    if not os.path.exists("output/"+str(split)+'/'+str(run)+"/lidar/raw/"):
-        os.makedirs("output/"+str(split)+'/'+str(run)+"/lidar/raw/")
-    # if anomaly_name is not None:
-    #     o3d.io.write_point_cloud(f"output/"+str(run)+"/lidar/"+"/"+anomaly_name+f"_lidar-{lidar_measurements.frame}.ply", pcd)
-    # else:
-    #     o3d.io.write_point_cloud(f"output/"+str(run)+"/lidar/"+"/normal_" + f"_lidar-{lidar_measurements.frame}.ply", pcd)
-    tmp = np.frombuffer(lidar_measurements.raw_data, dtype=np.dtype('f4')).copy().reshape(-1,4)
-    tmp[:,1] = -tmp[:,1]
-    np.save(f"output/"+str(split)+'/'+str(run)+"/lidar/raw/"+"/"+f"lidar-{lidar_measurements.frame}.npy", tmp)
+    split_label = str(split) if split else ""
+    weather_label = weather if weather else "Unknown"
+    if not os.path.exists("output/" + split_label + '/' + weather_label + '/' + str(run) + "/lidar/raw/"):
+        os.makedirs("output/" + split_label + '/' + weather_label + '/' + str(run) + "/lidar/raw/")
+    tmp = np.frombuffer(lidar_measurements.raw_data, dtype=np.dtype('f4')).copy().reshape(-1, 4)
+    tmp[:, 1] = -tmp[:, 1]
+    np.save("output/" + split_label + '/' + weather_label + '/' + str(run) + "/lidar/raw/" + f"/lidar-{lidar_measurements.frame}.npy", tmp)
 
-def save_semantic_lidar(lidar_measurements,anomaly_name,run,split):
+
+def save_semantic_lidar(lidar_measurements, anomaly_name, run, split, weather=None):
     """Save the Semantic LIDAR measurements.
     Args:
         lidar_measurements (carla.LidarMeasurement): The LIDAR measurements object.
+        weather (str): The weather label (e.g. 'Sunny', 'Rainy').
     """
     labels_colour = np.array([
     (0, 0, 0), # unlabeled = 0
@@ -546,8 +547,10 @@ def save_semantic_lidar(lidar_measurements,anomaly_name,run,split):
     # crete the direcotry if it does not exist
     # if not os.path.exists("output/"+str(run)+"/semantic_lidar/"):
     #     os.makedirs("output/"+str(run)+"/semantic_lidar/")
-    if not os.path.exists("output/"+str(split)+'/'+str(run)+"/semantic_lidar/raw/"):
-        os.makedirs("output/"+str(split)+'/'+str(run)+"/semantic_lidar/raw/")
+    split_label = str(split) if split else ""
+    weather_label = weather if weather else "Unknown"
+    if not os.path.exists("output/" + split_label + '/' + weather_label + '/' + str(run) + "/semantic_lidar/raw/"):
+        os.makedirs("output/" + split_label + '/' + weather_label + '/' + str(run) + "/semantic_lidar/raw/")
     # if anomaly_name is not None:
     #     o3d.io.write_point_cloud(f"output/"+str(run)+"/semantic_lidar/"+"/"+anomaly_name+f"_semantic_lidar-{lidar_measurements.frame}.ply", pcd)
     # else:
@@ -557,7 +560,7 @@ def save_semantic_lidar(lidar_measurements,anomaly_name,run,split):
         ('CosAngle', np.float32), ('ObjIdx', np.uint32), ('ObjTag', np.uint32)]))
     data = np.copy(data)
     data['y'] = -data['y']
-    np.save(f"output/"+str(split)+'/'+str(run)+"/semantic_lidar/raw/"+"/"+f"semantic_lidar-{lidar_measurements.frame}.npy", data)
+    np.save("output/" + split_label + '/' + weather_label + '/' + str(run) + "/semantic_lidar/raw/" + f"/semantic_lidar-{lidar_measurements.frame}.npy", data)
 
 def save_radar(radar_measurements,anomaly_name,run):
     """Save the radar measurements.
@@ -674,6 +677,7 @@ def spawn_anomaly(world,client,ego_vehicle,prop,is_dynamic,is_character,can_be_r
 
     if not spawn_at_zero:
         anomaly_tmp = world.spawn_actor(anomaly, carla.Transform(carla.Location(0, 0, 60), carla.Rotation(0, 0, 0)))
+        world.tick()
         trial = 0
         while True:
             trial += 1
@@ -867,3 +871,4 @@ def destroy_anomalies(world,client,anomaly_actors):
     print("Destroying anomalies...")
     client.apply_batch([carla.command.DestroyActor(x) for x in anomaly_actors])
     print("Destroying anoamlies... Done.")
+

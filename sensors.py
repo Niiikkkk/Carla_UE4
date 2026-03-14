@@ -9,7 +9,7 @@ class Sensor:
         self.queue = queue
         self.sensor:carla.Sensor = sensor
 
-    def handle(self, data, anomaly, split):
+    def handle(self, data, anomaly, split, weather=None):
         """
         Handle the sensor data. This method should be overridden by subclasses.
         :param sensor_tick:
@@ -52,7 +52,7 @@ class RGB_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None, split=None):
+    def handle(self, run, anomaly=None, split=None, weather=None):
         """
         Handle the RGB sensor data.
         :param sensor_tick:
@@ -61,12 +61,13 @@ class RGB_Sensor(Sensor):
         """
         # Process the RGB data here
         anomaly_name = self.get_anomaly_name_from_list(anomaly)
-        # if len(self.queue) != 0:
-        cam_data: carla.Image = self.queue.get(True,1)
+        cam_data: carla.Image = self.queue.get(True, 1)
+        weather_label = weather if weather else "Unknown"
+        split = split if split else ""
         if anomaly_name:
-            cam_data.save_to_disk('output/' + str(run) + '/rgb' +  "/" + anomaly_name  + '_%06d' % cam_data.frame)
+            cam_data.save_to_disk('output/' + str(split) + '/' + weather_label + '/' + str(run) + '/rgb/' + anomaly_name + '_%06d' % cam_data.frame)
         else:
-            cam_data.save_to_disk('output/' + str(run) + '/rgb' +  '/normal_' + '_%06d' % cam_data.frame)
+            cam_data.save_to_disk('output/' + str(split) + '/' + weather_label + '/' + str(run) + '/rgb/normal__%06d' % cam_data.frame)
 
 class Lidar_Sensor(Sensor):
     """
@@ -81,7 +82,7 @@ class Lidar_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None, split=None):
+    def handle(self, run, anomaly=None, split=None, weather=None):
         """
         Handle the LiDAR sensor data.
         :param run: The current run number.
@@ -89,9 +90,8 @@ class Lidar_Sensor(Sensor):
         """
         # Process the LiDAR data here
         anomaly_name = self.get_anomaly_name_from_list(anomaly)
-#        if len(self.queue) != 0:
-        lidar_data: carla.LidarMeasurement = self.queue.get(True,1)
-        save_lidar(lidar_data, anomaly_name, run, split)
+        lidar_data: carla.LidarMeasurement = self.queue.get(True, 1)
+        save_lidar(lidar_data, anomaly_name, run, split, weather)
 
 class Semantic_Sensor(Sensor):
     """
@@ -106,7 +106,7 @@ class Semantic_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None, split=None):
+    def handle(self, run, anomaly=None, split=None, weather=None):
         """
         Handle the semantic sensor data.
         :param run: The current run number.
@@ -114,19 +114,21 @@ class Semantic_Sensor(Sensor):
         """
         # Process the semantic data here
         anomaly_name = self.get_anomaly_name_from_list(anomaly)
-        # if len(self.queue) != 0:
-        semantic_data: carla.Image = self.queue.get(True,1)
+        semantic_data: carla.Image = self.queue.get(True, 1)
+        weather_label = weather if weather else "Unknown"
+        split = split if split else ""
         if anomaly_name:
             semantic_data.save_to_disk(
-                'output/' + str(run) +'/semantic/original' + "/" + anomaly_name +  '_%06d' % semantic_data.frame)
+                'output/' + str(split) + '/' + weather_label + '/' + str(run) + '/semantic/original/' + anomaly_name + '_%06d' % semantic_data.frame)
             semantic_data.save_to_disk(
-                f'output/' + str(run) +'/semantic/converted' + "/" + anomaly_name + f'_{semantic_data.frame}',
+                'output/' + str(split) + '/' + weather_label + '/' + str(run) + '/semantic/converted/' + anomaly_name + f'_{semantic_data.frame}',
                 carla.ColorConverter.CityScapesPalette)
         else:
             semantic_data.save_to_disk(
-                'output/' + str(run) +'/semantic/original'  + '/normal_'  + '_%06d' % semantic_data.frame)
-            semantic_data.save_to_disk(f'output/' + str(run) +'/semantic/converted' + '/normal_'  + f'_{semantic_data.frame}',
-                                       carla.ColorConverter.CityScapesPalette)
+                'output/' + str(split) + '/' + weather_label + '/' + str(run) + '/semantic/original/normal__%06d' % semantic_data.frame)
+            semantic_data.save_to_disk(
+                'output/' + str(split) + '/' + weather_label + '/' + str(run) + '/semantic/converted/' + f'normal__{semantic_data.frame}',
+                carla.ColorConverter.CityScapesPalette)
 
 class Semantic_Lidar_Sensor(Sensor):
     """
@@ -141,7 +143,7 @@ class Semantic_Lidar_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None, split=None):
+    def handle(self, run, anomaly=None, split=None, weather=None):
         """
         Handle the semantic LiDAR sensor data.
         :param run: The current run number.
@@ -149,9 +151,8 @@ class Semantic_Lidar_Sensor(Sensor):
         """
         # Process the semantic LiDAR data here
         anomaly_name = self.get_anomaly_name_from_list(anomaly)
-        # if len(self.queue) != 0:
-        lidar_semantic_data: carla.SemanticLidarMeasurement = self.queue.get(True,1)
-        save_semantic_lidar(lidar_semantic_data, anomaly_name, run,split)
+        lidar_semantic_data: carla.SemanticLidarMeasurement = self.queue.get(True, 1)
+        save_semantic_lidar(lidar_semantic_data, anomaly_name, run, split, weather)
 
 class Radar_Sensor(Sensor):
     """
@@ -166,7 +167,7 @@ class Radar_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None, split=None):
+    def handle(self, run, anomaly=None, split=None, weather=None):
         """
         Handle the radar sensor data.
         :param run: The current run number.
@@ -174,8 +175,7 @@ class Radar_Sensor(Sensor):
         """
         # Process the radar data here
         anomaly_name = self.get_anomaly_name_from_list(anomaly)
-        # if len(self.queue) != 0:
-        radar_data: carla.RadarMeasurement = self.queue.get(True,1)
+        radar_data: carla.RadarMeasurement = self.queue.get(True, 1)
         save_radar(radar_data, anomaly_name, run)
 
 class Depth_Sensor(Sensor):
@@ -191,7 +191,7 @@ class Depth_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None, split=None):
+    def handle(self, run, anomaly=None, split=None, weather=None):
         """
         Handle the depth sensor data.
         :param run: The current run number.
@@ -199,22 +199,22 @@ class Depth_Sensor(Sensor):
         """
         # Process the depth data here
         anomaly_name = self.get_anomaly_name_from_list(anomaly)
-        # if len(self.queue) != 0:
-        depth_data: carla.Image = self.queue.get(True,1)
+        depth_data: carla.Image = self.queue.get(True, 1)
+        weather_label = weather if weather else "Unknown"
         if anomaly_name:
             depth_data.save_to_disk(
-                'output/' + str(run) +'/depth/original'  + "/" + anomaly_name  + '_%06d' % depth_data.frame)
+                'output/' + str(split) + '/' + weather_label + '/' + str(run) + '/depth/original/' + anomaly_name + '_%06d' % depth_data.frame)
             depth_data.save_to_disk(
-                'output/' + str(run) +'/depth/depth'  + "/" + anomaly_name  + '_%06d' % depth_data.frame,
+                'output/' + str(split) + '/' + weather_label + '/' + str(run) + '/depth/depth/' + anomaly_name + '_%06d' % depth_data.frame,
                 carla.ColorConverter.Depth)
             depth_data.save_to_disk(
-                'output/' + str(run) +'/depth/logaritmic'  + "/" + anomaly_name  + '_%06d' % depth_data.frame,
+                'output/' + str(split) + '/' + weather_label + '/' + str(run) + '/depth/logaritmic/' + anomaly_name + '_%06d' % depth_data.frame,
                 carla.ColorConverter.LogarithmicDepth)
         else:
-            depth_data.save_to_disk('output/' + str(run) +'/depth/original'  + '/normal_' + '_%06d' % depth_data.frame)
-            depth_data.save_to_disk('output/' + str(run) +'/depth/depth'  + '/normal_' + '_%06d' % depth_data.frame,
+            depth_data.save_to_disk('output/' + str(split) + '/' + weather_label + '/' + str(run) + '/depth/original/normal__%06d' % depth_data.frame)
+            depth_data.save_to_disk('output/' + str(split) + '/' + weather_label + '/' + str(run) + '/depth/depth/normal__%06d' % depth_data.frame,
                                     carla.ColorConverter.Depth)
-            depth_data.save_to_disk('output/' + str(run) +'/depth/logaritmic'  + '/normal_'  + '_%06d' % depth_data.frame,
+            depth_data.save_to_disk('output/' + str(split) + '/' + weather_label + '/' + str(run) + '/depth/logaritmic/normal__%06d' % depth_data.frame,
                                     carla.ColorConverter.LogarithmicDepth)
 
 class Instant_Segmentation_Sensor(Sensor):
@@ -230,7 +230,7 @@ class Instant_Segmentation_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, run, anomaly=None, split=None):
+    def handle(self, run, anomaly=None, split=None, weather=None):
         """
         Handle the instance segmentation sensor data.
         :param run: The current run number.
@@ -238,13 +238,13 @@ class Instant_Segmentation_Sensor(Sensor):
         """
         # Process the instance segmentation data here
         anomaly_name = self.get_anomaly_name_from_list(anomaly)
-        # if len(self.queue) != 0:
-        instance_data: carla.Image = self.queue.get(True,1)
+        instance_data: carla.Image = self.queue.get(True, 1)
+        weather_label = weather if weather else "Unknown"
         if anomaly_name:
             instance_data.save_to_disk(
-                'output/' + str(run) +'/instance'  + "/" +anomaly_name  + '_%06d' % instance_data.frame)
+                'output/' + str(split) + '/' + weather_label + '/' + str(run) + '/instance/' + anomaly_name + '_%06d' % instance_data.frame)
         else:
-            instance_data.save_to_disk('output/' + str(run) +'/instance'  + '/normal_'  + '_%06d' % instance_data.frame)
+            instance_data.save_to_disk('output/' + str(split) + '/' + weather_label + '/' + str(run) + '/instance/normal__%06d' % instance_data.frame)
 
 class Collision_Sensor(Sensor):
     """
@@ -259,7 +259,7 @@ class Collision_Sensor(Sensor):
         """
         super().__init__(queue, sensor)
 
-    def handle(self, data, anomaly=None, split=None):
+    def handle(self, data, anomaly=None, split=None, weather=None):
         """
         Handle the collision sensor data.
         :param data: The collision data to handle.

@@ -2,6 +2,7 @@
 output/
 output_anomaly/
 output_normal/
+output_old/
 
 # JSON files
 *.json

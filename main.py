@@ -1,4 +1,5 @@
 import argparse
+import os
 import random
 from queue import Queue, Empty
 
@@ -7,6 +8,66 @@ from sensors import *
 from anomalies import *
 import logging
 from logging import info,warning,error
+
+WEATHER_PRESETS = {
+    "Sunny": carla.WeatherParameters(
+        cloudiness=0, precipitation=0, precipitation_deposits=0,
+        sun_altitude_angle=70, fog_density=0, fog_distance=100, wetness=0
+    ),
+    "Overcast": carla.WeatherParameters(
+        cloudiness=80, precipitation=0, precipitation_deposits=0,
+        sun_altitude_angle=50, fog_density=0, fog_distance=100, wetness=0
+    ),
+    "Rainy": carla.WeatherParameters(
+        cloudiness=80, precipitation=80, precipitation_deposits=60,
+        sun_altitude_angle=40, fog_density=10, fog_distance=80, wetness=80
+    ),
+    "HeavyRain": carla.WeatherParameters(
+        cloudiness=100, precipitation=100, precipitation_deposits=100,
+        sun_altitude_angle=30, fog_density=20, fog_distance=80, wetness=100
+    ),
+    "Foggy": carla.WeatherParameters(
+        cloudiness=60, precipitation=0, precipitation_deposits=0,
+        sun_altitude_angle=50, fog_density=40, fog_distance=30, wetness=20
+    ),
+    "HeavyFog": carla.WeatherParameters(
+        cloudiness=80, precipitation=0, precipitation_deposits=0,
+        sun_altitude_angle=40, fog_density=100, fog_distance=10, wetness=40
+    ),
+    "HeavyRainFog": carla.WeatherParameters(
+        cloudiness=100, precipitation=100, precipitation_deposits=100,
+        sun_altitude_angle=20, fog_density=80, fog_distance=20, wetness=100
+    )
+}
+
+
+def get_weather_preset():
+    """Pick a random named weather preset and return (name, carla.WeatherParameters)."""
+    name = random.choice(list(WEATHER_PRESETS.keys()))
+    return name, WEATHER_PRESETS[name]
+
+
+GLOBAL_ANOMALY_SIZE_FILE = os.path.join("output", "anomaly_sizes.txt")
+
+
+def reset_global_anomaly_size_manifest():
+    os.makedirs("output", exist_ok=True)
+    with open(GLOBAL_ANOMALY_SIZE_FILE, "w", encoding="utf-8"):
+        pass
+
+
+def write_global_anomaly_size_manifest(weather, run_label, anomaly_sizes, anomaly_names=None):
+    if not anomaly_sizes:
+        return
+
+    unique_sizes = list(dict.fromkeys(anomaly_sizes))
+    sizes_str = "[" + ", ".join(unique_sizes) + "]"
+    paired = [f"{name}-{size}" for name, size in zip(anomaly_names, anomaly_sizes)] if anomaly_names else []
+    names_str = (", " + ", ".join(paired)) if paired else ""
+    os.makedirs("output", exist_ok=True)
+    with open(GLOBAL_ANOMALY_SIZE_FILE, "a", encoding="utf-8") as manifest:
+        manifest.write(f"{weather}/{run_label} -> {sizes_str}{names_str}\n")
+
 
 def main(args, bench_run=None, split=None):
     logging.basicConfig(level=logging.INFO,
@@ -54,73 +115,13 @@ def main(args, bench_run=None, split=None):
     set_sync_mode(world,client,simulation_time_for_tick)
 
 
-    cloudiness_params = [0,20,40,60,80] # 0 is clear sky, 100 is all cloud
-    precipitation_params = [0,20,40,60,80,100] # 0 is no rain, 100 is full rain
-    precipitation_deposits_params = [0,20,40,60,80,100] # 0 is no wetness, 100 is full wetness
-    wind_intensity_params = [0,50,100] # 0 is no wind, 100 is strong wind
-    #sun_altitude_angle_params = [-90]  # -90 is midnight, 90 is midday
-    sun_altitude_angle_params = [10, 30, 50, 70, 90, 110, 130, 150, 170]  # -90 is midnight, 90 is midday
-    fog_density_params = [0,20,40,60,80,100] # 0 is no fog, 100 is full fog
-    fog_distance_params = [0,10,20,30,40,50,60,70,80,90] # 0 is no fog, 100 is full fog
-    wetness_params = [0,20,40,60,80,100] # 0 is dry, 100 is fully wet
+    weather, weather_params = get_weather_preset()
+    info("Weather preset: %s", weather)
+    print("Weather preset:", weather)
+    print("Weather parameters:", weather_params)
 
-    rnd = random.randint(0,100)
-    rnd_2 = random.randint(0,100)
-    rnd_3 = random.randint(0,100)
-    rnd_4 = random.randint(0,100)
-    idx = rnd % len(cloudiness_params)
-    cloudiness = cloudiness_params[idx]
-    precipitation = 0
-    precipitation_deposits = 0
-    wetness = 0
-    if cloudiness > 0:
-        #rain only if there are clouds
-        if random.random() < 0.3:
-            # it can be cloudy but not raining
-            idx_2 = rnd_2 % len(precipitation_params)
-            precipitation = precipitation_params[idx_2]
-            precipitation_deposits = precipitation_deposits_params[idx_2]
-            wetness = wetness_params[idx_2]
-    #wind_intensity = wind_intensity_params[idx]
-    sun_altitude_angle = sun_altitude_angle_params[rnd % len(sun_altitude_angle_params)]
-    fog_density = 0
-    fog_distance = 100
-    if random.random() < 0.3:
-        #not always foggy
-        idx_3 = rnd_3 % len(fog_density_params)
-        fog_density = fog_density_params[idx_3]
-        idx_4 = rnd_4 % len(fog_distance_params)
-        fog_distance = fog_distance_params[idx_4]
-
-    #precipitation related to prec_deposits
-    #prec related to cloudiness
-    #prec_deposit can exists without precipitation, but not viceversa
-    #fog distance related to fog density
-    #fog distance 0 -> near. 100 -> not visible
-    #precipitation_deposits related to wetness
-
-    print("Weather parameters:")
-    print("Cloudiness: ", cloudiness)
-    print("Precipitation: ", precipitation)
-    print("Precipitation deposits: ", precipitation_deposits)
-    #print("Wind intensity: ", wind_intensity)
-    print("Sun altitude angle: ", sun_altitude_angle)
-    print("Fog density: ", fog_density)
-    print("Fog distance: ", fog_distance)
-    print("Wetness: ", wetness)
-
-    weather = carla.WeatherParameters(
-        cloudiness=cloudiness,
-        precipitation=precipitation,
-        precipitation_deposits=precipitation_deposits,
-        #wind_intensity=wind_intensity,
-        sun_altitude_angle=sun_altitude_angle,
-        fog_density=fog_density,
-        fog_distance=fog_distance,
-        wetness=wetness
-    )
-    #world.set_weather(weather)
-    #world.tick()
+    world.set_weather(weather_params)
+    world.tick()
 
     #set_async_mode(world,client)
 
@@ -134,6 +135,7 @@ def main(args, bench_run=None, split=None):
 
         anomalies = []
         spawned_anomaly_names = []
+        spawned_anomaly_sizes = []
         all_vehicles = []
         sensors = []
         ego_vehicle = spawn_ego_vehicle(world, client, args)
@@ -179,8 +181,12 @@ def main(args, bench_run=None, split=None):
                     world.tick()
                     anomalies.append(anomaly_object)
                     spawned_anomaly_names.append(anomaly_name)
+                    spawned_anomaly_sizes.append(size)
             if len(anomalies) == 0:
                 raise Exception("No anomalies spawned, exiting...")
+
+            run_label = bench_run + 1 if bench_run is not None else args.seed
+            write_global_anomaly_size_manifest(weather, run_label, spawned_anomaly_sizes, spawned_anomaly_names)
 
         # Setup the collision sensor, only if some anomalies are present
 
@@ -276,7 +282,7 @@ def main(args, bench_run=None, split=None):
                     anomaly_obj.handle_semantic_tag()
 
             # Handle the sensors data
-            handle_sensor_data(args, args.seed, sensors, spawned_anomaly_names, split)
+            handle_sensor_data(args, args.seed, sensors, spawned_anomaly_names, split, weather)
             # info("Frame: " + str(world.get_snapshot().frame))
 
     except KeyboardInterrupt:
@@ -293,12 +299,12 @@ def main(args, bench_run=None, split=None):
         info("Total frames: " + str(total_frames))
         info("End of simulation")
 
-def handle_sensor_data(args, run, sensors,anomalies, split):
+def handle_sensor_data(args, run, sensors, anomalies, split, weather=None):
     # if the queue is empty, skip one and go to the next tick(). This happens at the first tick() because
     # the data will be available only at the next tick()
     for sensor in sensors:
         try:
-            sensor.handle(run,anomalies,split)
+            sensor.handle(run, anomalies, split, weather)
         except Empty as e:
             print("Some sensor queue is empty, skipping this tick")
 
@@ -716,20 +722,21 @@ def benchmark():
         "fence", "fridge", "garbagebag", "garbagebag2", "hoodcar", "ladder", "deliverybox",
         "mannequin", "mattress", "officechair", "oldstove", "oven", "pillow",
         "rake", "skateboard", "stroller", "television", "tire",
-        "trafficcone", "trafficcone2", "roadsigntwisted", "roadsignvandalized", "trolley",
+        "trafficcone", "trafficcone2", "trolley",
         "trunkcar", "washingmachine", "woodpalette", "wheelchair", "box",
         "bicycle1", "bicycle2", "bicycle3", "bicycle4", "oilbarrel", "waterbarrel",
         #DYN
         "labrador", "person", "bird", "trashcan", "garbagebagwind"
-        #"drone"
+        #"drone", "roadsignvandalized", "roadsigntwisted"
     ]
 
     list_large_anomalies = [
-        "fallenstreetlight", "flippedcar", "pilesand",
+        "pilesand",
         "scooter", "shoppingcart", "table", "tierscooter", "ladder2",
         "container", "roadblock", "roadblock2",
         #DYN
         #Those here are not anomalous objects, but anomalous events. Exclude them.
+        # "flippedcar", "fallenstreetlight"
         #"dangerdriver", "crash", "streetlight", "trafficlightoff",
         #"billboard", "instantcarbreak", "carthroughredlight"
     ]
@@ -737,13 +744,16 @@ def benchmark():
 
 
     print("Total Anomalies: ", len(list_tiny_anomalies) + len(list_small_anomalies) + len(list_medium_anomalies) + len(list_large_anomalies))
+    #divide_anomalies_into_splits_3D_lidar(args, list_tiny_anomalies, list_small_anomalies, list_medium_anomalies, list_large_anomalies)
+    run_2D_rgb(args, list_tiny_anomalies, list_small_anomalies, list_medium_anomalies, list_large_anomalies)
 
-    #args.semantic = True
-    #args.rgb = True
-    #args.depth = True
+def run_2D_rgb(args, list_tiny_anomalies, list_small_anomalies, list_medium_anomalies, list_large_anomalies):
+    args.semantic = True
+    args.rgb = True
+    # args.depth = True
     args.lidar = True
-    #args.radar = True
-    #args.instance = True
+    # args.radar = True
+    # args.instance = True
     args.lidar_semantic = True
 
     number_of_runs = 80
@@ -754,9 +764,75 @@ def benchmark():
     # NOTE: fps and sensor_tick are linked. If I have 20 fps, then the tick will be every 1/20 = 0.05 seconds. So the sensor tick should be >= 0.05.
     # If the set sensor_tick 0.1 with an FPS of 20, the sensor will capture data every 2 frames.
     args.fps = 30
-    args.sensor_tick = str(1/args.fps)
+    args.sensor_tick = str(1 / args.fps)
     args.hybrid = True
     args.run_time = 10  # seconds
+
+    reset_global_anomaly_size_manifest()
+
+    for run in range(number_of_runs):
+        random.seed(seed + run)
+        args.seed = seed + run
+
+        number_of_tiny_anomalies = random.randint(1, 4)
+        tiny_anomalies = random.sample(list_tiny_anomalies, number_of_tiny_anomalies)
+        tiny = build_arg_anomalies(tiny_anomalies, "tiny")
+
+        number_of_small_anomalies = random.randint(1, 4)
+        small_anomalies = random.sample(list_small_anomalies, number_of_small_anomalies)
+        small = build_arg_anomalies(small_anomalies, "small")
+
+        number_of_medium_anomalies = random.randint(0, 3)
+        medium_anomalies = random.sample(list_medium_anomalies, number_of_medium_anomalies)
+        medium = build_arg_anomalies(medium_anomalies, "medium")
+
+        number_of_large_anomalies = random.randint(0, 3)
+        large_anomalies = random.sample(list_large_anomalies, number_of_large_anomalies)
+        large = build_arg_anomalies(large_anomalies, "large")
+
+        args.anomalies = tiny + small + medium + large
+        #args.anomalies = []
+
+        # randomly select number of vehicles
+        args.number_of_vehicles = random.randint(40, 60)
+        # args.number_of_vehicles = 0
+
+        # randomly select number of pedestrians
+        args.number_of_pedestrians = random.randint(80, 100)
+        # args.number_of_pedestrians = 0
+        # args.spawn_points = [carla.Transform(carla.Location(x=-103.21614258, y=-2.20839218, z=0.6), carla.Rotation(pitch=0.000000, yaw=-90, roll=0.000000))]
+        # args.spawn_points = [carla.Transform(carla.Location(x=99.07856445, y=42.14180176, z=0.6), carla.Rotation(pitch=0.000000, yaw=90, roll=0.000000))]
+
+        print(f"Running run {run + 1} / {number_of_runs} with the following parameters:")
+        print(args)
+
+        start_time = time.time()
+        main(args, run)
+        end_time = time.time()
+        print(f"Execution Time: {end_time - start_time} seconds\n\n\n")
+
+def divide_anomalies_into_splits_3D_lidar(args,list_tiny_anomalies = None, list_small_anomalies = None, list_medium_anomalies = None, list_large_anomalies = None):
+    args.semantic = True
+    args.rgb = True
+    # args.depth = True
+    args.lidar = True
+    # args.radar = True
+    # args.instance = True
+    args.lidar_semantic = True
+
+    number_of_runs = 80
+
+    seed = 1
+
+    args.log = True
+    # NOTE: fps and sensor_tick are linked. If I have 20 fps, then the tick will be every 1/20 = 0.05 seconds. So the sensor tick should be >= 0.05.
+    # If the set sensor_tick 0.1 with an FPS of 20, the sensor will capture data every 2 frames.
+    args.fps = 30
+    args.sensor_tick = str(1 / args.fps)
+    args.hybrid = True
+    args.run_time = 10  # seconds
+
+    reset_global_anomaly_size_manifest()
 
     random.seed(42)
 
@@ -791,7 +867,6 @@ def benchmark():
     print("")
     run_experiments(args, number_of_runs, seed, test_pools, test_runs, "Test")
 
-
 def run_experiments(args, number_of_runs: int, seed: int,
                     train_pools, train_runs: int,split):
     for run in range(train_runs):
@@ -823,7 +898,6 @@ def run_experiments(args, number_of_runs: int, seed: int,
         main(args, run, split)
         end_time = time.time()
         print(f"Execution Time: {end_time - start_time} seconds\n\n\n")
-
 
 def pick_anomalies(pool, split="Train"):
     number_of_tiny_anomalies = random.randint(1, 3)
